@@ -43,7 +43,6 @@ function initialize!(
     (; ustep, tstep, k, invγdt) = cache
     if SciMLBase.has_stats(integrator)
         integrator.stats.nf += cache.cache.stats.nf
-        integrator.stats.nnonliniter += cache.cache.stats.nsteps
         integrator.stats.njacs += cache.cache.stats.njacs
     end
     if f isa DAEFunction
@@ -70,7 +69,6 @@ function initialize!(
 
     if SciMLBase.has_stats(integrator)
         integrator.stats.nf += cache.cache.stats.nf
-        integrator.stats.nnonliniter += cache.cache.stats.nsteps
         integrator.stats.njacs += cache.cache.stats.njacs
     end
 
@@ -108,7 +106,13 @@ function initialize!(
         else
             nlp_params = (tmp, ustep, γ, α, tstep, k, invγdt, method, p, dt, f)
         end
-        SciMLBase.reinit!(cache.cache, z, p = nlp_params)
+        if length(cache.cache.u) != length(z)
+            new_prob = SciMLBase.remake(cache.prob; u0 = copy(z), p = nlp_params)
+            cache.prob = new_prob
+            cache.cache = init(new_prob, cache.cache.alg)
+        else
+            SciMLBase.reinit!(cache.cache, z, p = nlp_params)
+        end
     end
     return nothing
 end
@@ -668,5 +672,17 @@ function Base.resize!(nlcache::NLNewtonCache, ::AbstractNLSolver, integrator, i:
     # resize J and W (or rather create new ones of appropriate size and type)
     resize_J_W!(nlcache, integrator, i)
 
+    return nothing
+end
+
+function Base.resize!(nlcache::NonlinearSolveCache, ::AbstractNLSolver, integrator, i::Int)
+    nlcache.ustep === nothing || resize!(nlcache.ustep, i)
+    nlcache.k === nothing || resize!(nlcache.k, i)
+    nlcache.atmp === nothing || resize!(nlcache.atmp, i)
+    nlcache.du1 === nothing || resize!(nlcache.du1, i)
+    nlcache.jac_config === nothing || resize_jac_config!(nlcache, integrator)
+    nlcache.W === nothing || resize_J_W!(nlcache, integrator, i)
+    nlcache.W_γdt = zero(nlcache.W_γdt)
+    nlcache.new_W = true
     return nothing
 end

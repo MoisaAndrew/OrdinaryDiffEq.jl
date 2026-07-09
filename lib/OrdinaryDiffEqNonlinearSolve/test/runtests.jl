@@ -26,7 +26,6 @@ end
 # Run functional tests
 if TEST_GROUP ∉ ("QA", "ModelingToolkit")
     @time @safetestset "Newton Tests" include("newton_tests.jl")
-    @time @safetestset "Sparse Algebraic Detection" include("sparse_algebraic_detection_tests.jl")
     @time @safetestset "Sparse DAE Initialization" include("sparse_dae_initialization_tests.jl")
     @time @safetestset "Linear Nonlinear Solver Tests" include("linear_nonlinear_tests.jl")
     @time @safetestset "Linear Solver Tests" include("linear_solver_tests.jl")
@@ -36,6 +35,7 @@ if TEST_GROUP ∉ ("QA", "ModelingToolkit")
     @time @safetestset "DAE Initialization Tests" include("dae_initialization_tests.jl")
     @time @safetestset "CheckInit Tests" include("checkinit_tests.jl")
     @time @safetestset "Nested AD over NonlinearSolveAlg" include("nested_ad_nlsolvealg_tests.jl")
+    @time @safetestset "NonlinearSolveAlg Jacobian Reuse Tests" include("nsa_jacobian_reuse_tests.jl")
 end
 
 # Run QA tests (JET, Aqua)

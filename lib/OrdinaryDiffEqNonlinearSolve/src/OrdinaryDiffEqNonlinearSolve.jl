@@ -23,7 +23,6 @@ import FastClosures: @closure
 using LinearAlgebra: UniformScaling, UpperTriangular, givens, cond, dot, lmul!, axpy!,
     I, rmul!, norm, mul!, ldiv!
 import LinearAlgebra
-using SparseArrays: SparseMatrixCSC
 import ArrayInterface: ArrayInterface
 import LinearSolve
 import ForwardDiff: ForwardDiff
@@ -45,7 +44,8 @@ using OrdinaryDiffEqCore: resize_nlsolver!, _initialize_dae!,
     Convergence,
     Divergence, NLStatus,
     MethodType, error_constant,
-    alg_extrapolates, resize_J_W!, alg_autodiff
+    alg_extrapolates, resize_J_W!, alg_autodiff,
+    find_algebraic_vars_eqs
 
 import OrdinaryDiffEqCore: _initialize_dae!,
     isnewton, get_W, isfirstcall, isfirststage,

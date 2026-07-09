@@ -93,8 +93,8 @@ function _rosenbrock_jac_reuse_decision(integrator, cache, dtgamma)
     # constraint derivatives must remain accurate. See Steinebach (2024).
     naccept = integrator.stats.naccept
     if integrator.f.mass_matrix !== I
-        if naccept > jac_reuse.last_naccept 
-           jac_reuse.last_naccept = naccept
+        if naccept > jac_reuse.last_naccept
+            jac_reuse.last_naccept = naccept
             return (true, true)
         else
             return (false, true)
@@ -184,7 +184,7 @@ function calc_tderivative!(integrator, cache, dtd1, repeat_step)
                 tf.p = p
                 alg = unwrap_alg(integrator, true)
 
-                autodiff_alg = ADTypes.dense_ad(gpu_safe_autodiff(alg_autodiff(alg), u))
+                autodiff_alg = gpu_safe_autodiff(ADTypes.dense_ad(alg_autodiff(alg)), u)
 
                 # Convert t to eltype(dT) if using ForwardDiff, to make FunctionWrappers work
                 t = autodiff_alg isa AutoForwardDiff ? convert(eltype(dT), t) : t
@@ -229,7 +229,7 @@ function calc_tderivative(integrator, cache)
         tf.u = uprev
         tf.p = p
 
-        autodiff_alg = ADTypes.dense_ad(gpu_safe_autodiff(alg_autodiff(alg), u))
+        autodiff_alg = gpu_safe_autodiff(ADTypes.dense_ad(alg_autodiff(alg)), u)
 
         if alg_autodiff isa AutoFiniteDiff
             autodiff_alg = SciMLBase.@set autodiff_alg.dir = diffdir(integrator)
@@ -573,6 +573,12 @@ function jacobian2W!(
             else
                 @.. broadcast = false @view(W[idxs]) = muladd(λ, invdtgamma, @view(J[idxs]))
             end
+        elseif is_sparse(W) && !ArrayInterface.fast_scalar_indexing(nonzeros(W))
+            # Sparse GPU arrays (e.g. CuSparseMatrixCSC/CSR) don't support broadcasting.
+            # ArrayInterface.fast_scalar_indexing is not specialized for AbstractGPUSparseArray,
+            # so we detect them by checking if the underlying nonzeros storage is a GPU array.
+            # we then fall back to allocating matrix arithmetic
+            copyto!(W, J - invdtgamma * mass_matrix)
         else
             @.. broadcast = false W = muladd(-mass_matrix, invdtgamma, J)
         end
@@ -1128,6 +1134,13 @@ function build_J_W(
         # If factorization, then just use the jac_prototype
         J = similar(f.jac_prototype)
         W = similar(J)
+        if is_sparse(J)
+            set_all_nzval!(J, one(eltype(J)))
+            set_all_nzval!(W, one(eltype(W)))
+        else
+            fill!(J, one(eltype(J)))
+            fill!(W, one(eltype(W)))
+        end
     elseif (
             IIP && (concrete_jac(alg) === nothing || !concrete_jac(alg)) &&
                 alg.linsolve !== nothing &&
@@ -1212,6 +1225,8 @@ function build_J_W(
             similar(J)
         elseif J isa StaticMatrix
             StaticWOperator(J - f.mass_matrix * invdtgamma_prototype, false)
+        elseif f.mass_matrix isa MatrixOperator
+            WOperator{IIP}(f.mass_matrix, dtgamma_prototype, J, _vec(u))
         else
             ArrayInterface.lu_instance(J - f.mass_matrix * invdtgamma_prototype)
         end

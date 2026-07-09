@@ -3,7 +3,9 @@ using JET
 
 run_qa(
     StochasticDiffEqLeaping;
-    jet_kwargs = (; target_defined_modules = true),
+    # Scope JET to this package in `:typo` mode (the OrdinaryDiffEq* solver-sublibrary
+    # convention); `target_defined_modules = true` is deprecated in JET.
+    jet_kwargs = (; target_modules = (StochasticDiffEqLeaping,), mode = :typo),
     explicit_imports = true,
     ei_kwargs = (;
         # `@..` is the SciML fused-broadcast macro, owned by FastBroadcast and
@@ -18,7 +20,7 @@ run_qa(
                 Symbol("@.."),
                 # StochasticDiffEqCore internal cache-alloc macro (non-public).
                 Symbol("@cache"),
-            )
+            ),
         ),
         all_qualified_accesses_are_public = (;
             ignore = (
@@ -27,7 +29,7 @@ run_qa(
                 :isaposteriori,
                 # PoissonRandom sampler, re-exported via JumpProcesses (non-public).
                 :pois_rand,
-            )
+            ),
         ),
     ),
 )

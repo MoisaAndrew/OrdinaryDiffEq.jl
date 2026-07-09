@@ -46,6 +46,7 @@ function interface_i()
     @time @safetestset "Inplace Interpolation Tests" include("InterfaceI/inplace_interpolation.jl")
     @time @safetestset "Algebraic Interpolation Tests" include("InterfaceI/algebraic_interpolation.jl")
     @time @safetestset "Interpolation and Cache Stripping Tests" include("InterfaceI/ode_strip_test.jl")
+    @time @safetestset "Public API Package Splits" include("InterfaceI/public_api_package_split.jl")
     @time @safetestset "Aliasing Tests" include("InterfaceI/aliasing_tests.jl")
     return @time @safetestset "Solution Memory Release" include("InterfaceI/solution_memory_tests.jl")
 end
@@ -206,8 +207,10 @@ function gpu_group()
     is_APPVEYOR && return
     activate_gpu_env()
     gpudir = joinpath(@__DIR__, "gpu")
-    for f in sort(filter(f -> endswith(f, ".jl"), readdir(gpudir)))
-        @time @eval @safetestset $("GPU: " * f) include($(joinpath(gpudir, f)))
+    @testset "GPU Tests" begin
+        for f in sort(filter(f -> endswith(f, ".jl"), readdir(gpudir)))
+            @time @eval @safetestset $("GPU: " * f) include($(joinpath(gpudir, f)))
+        end
     end
     return nothing
 end
